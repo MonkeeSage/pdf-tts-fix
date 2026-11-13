@@ -1,0 +1,16 @@
+# scratch space
+.tmp-claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# never commit PDFs (sample books, tool output)
+*.pdf

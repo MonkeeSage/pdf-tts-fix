@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pdf-tts-fix"
+version = "0.1.0"
+description = "Clean up the text copied out of a PDF for text-to-speech, without changing how it looks"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+dependencies = ["pikepdf>=8"]
+
+[project.optional-dependencies]
+test = ["pytest", "fonttools", "pymupdf"]
+
+[project.scripts]
+pdf-tts-fix = "pdf_tts_fix.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pdf_tts_fix"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
