@@ -40,6 +40,7 @@ class Run:
     adj: list  # len(glyphs)+1 TJ numbers: before 1st, after each glyph
     top: float = 0.0  # distance of the baseline from the visual top edge
     left: float = 0.0
+    right: float = 0.0  # visual x where the run ends
     em: float = 0.0  # font size in user-space units
     page_height: float = 0.0
     text: str = field(init=False)
@@ -163,7 +164,6 @@ class Page:
                 run.left, run.top = self._visual(m[4], m[5])
                 run.em = size * math.hypot(m[2], m[3])
                 run.page_height = self.height
-                yield run
                 # advance the text matrix past the run so following runs on the
                 # same line (without a new Tm) get a sensible position
                 adv = 0.0
@@ -174,6 +174,9 @@ class Page:
                     adv += (w + tc + space) * th
                 adv -= adj[-1] / 1000.0 * size * th
                 tm = mul((1, 0, 0, 1, adv, 0), tm)
+                m = mul(tm, ctm)
+                run.right = self._visual(m[4], m[5])[0]
+                yield run
 
 
 def _width(font: Font, code: int) -> float:

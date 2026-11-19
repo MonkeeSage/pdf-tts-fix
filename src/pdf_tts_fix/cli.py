@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -10,6 +11,13 @@ import pikepdf
 
 from . import __version__
 from .rewrite import process
+
+
+def _regex(pattern: str) -> re.Pattern:
+    try:
+        return re.compile(pattern)
+    except re.error as e:
+        raise argparse.ArgumentTypeError(f"bad regex {pattern!r}: {e}")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -53,6 +61,19 @@ def _parser() -> argparse.ArgumentParser:
         help="don't remove page numbers",
     )
     p.add_argument(
+        "-r",
+        "--replace",
+        metavar="REGEX",
+        type=_regex,
+        action="append",
+        default=[],
+        help=(
+            "remove text matching REGEX (Python syntax) from the copied "
+            "text; can be repeated. Matched against each page's text with "
+            "a space at word gaps and a newline between lines"
+        ),
+    )
+    p.add_argument(
         "-n",
         "--dry-run",
         action="store_true",
@@ -94,6 +115,7 @@ def main(argv=None) -> int:
             letter_spacing=not args.keep_letter_spacing,
             headers=not args.keep_headers,
             page_numbers=not args.keep_page_numbers,
+            remove=args.replace,
             dry_run=args.dry_run,
         )
     except pikepdf.PasswordError:
@@ -108,15 +130,21 @@ def main(argv=None) -> int:
             ("letter-spaced", report.letter_spaced),
             ("header", report.headers),
             ("page number", report.page_numbers),
+            ("removed", report.removed),
         ):
             for pno, text in items:
+                if label == "removed":
+                    text = repr(text)
                 print(f"p{pno:<4} {label:<14} {text}")
-    print(
+    summary = (
         f"{report.pages} pages: "
         f"joined {len(report.letter_spaced)} letter-spaced runs, "
         f"hid {len(report.headers)} header runs "
         f"and {len(report.page_numbers)} page numbers"
     )
+    if args.replace:
+        summary += f", removed {len(report.removed)} matches"
+    print(summary)
     if not args.dry_run:
         print(f"wrote {dst}")
     return 0

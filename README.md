@@ -35,8 +35,25 @@ Options:
 | `--keep-letter-spacing` | don't join letter-spaced text |
 | `--keep-headers` | don't remove running headers/footers |
 | `--keep-page-numbers` | don't remove page numbers |
+| `-r, --replace REGEX` | remove text matching `REGEX` (repeatable) |
 | `-n, --dry-run` | report only |
 | `-v, --verbose` | list every change by page |
+
+### Removing text with `--replace`
+
+`-r REGEX` removes every match from the copied text, e.g. inline citations:
+
+```sh
+pdf-tts-fix book.pdf -r ' \([A-Z]{2,}[^)]*\)'
+# "for the second (NI p14; FV p20)."  ->  "for the second."
+```
+
+Patterns use Python `re` syntax and are matched against each page's text
+as running text: headers and page numbers already removed, and a single
+space wherever there's a visible word gap or a line break (so `' \('` also
+matches a parenthesis at the start of a line). With several `-r` options, each is applied to what the
+previous ones left. Matches can't span pages. Check what matches with
+`--dry-run -v`.
 
 ## How it works
 
@@ -53,6 +70,9 @@ single glyph:
 - **Headers and page numbers** are marked as page decoration
   (`/Artifact` and an empty `/ActualText`) and drawn with a copy of the font
   whose letters copy as spaces.
+- **`--replace` matches** are drawn with that same font copy. They're
+  tagged with `/ActualText` holding just the neighbouring visible character,
+  so viewers that use it don't leave a gap where the removed text was.
 
 Headers and page numbers are found by looking for the top-most and bottom-most
 line on each page that has a font, size and position shared with many other

@@ -20,7 +20,7 @@ from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from pikepdf import Array, Dictionary, Name
 
-CHARS = string.ascii_letters + string.digits + " .,'"
+CHARS = string.ascii_letters + string.digits + " .,'();$"
 ADV = 600
 TITLE = "MY BOOK"
 CHAPTER = "A Chapter Title"
@@ -30,6 +30,10 @@ BODY = [
     "It has kerning but no letter spacing at all.",
     "Some more words to read aloud.",
 ]
+# a line with a citation, drawn as two pieces: "and ... second" | "(NI ...)."
+CITED = ("and $12 million for the second", "(NI p14; FV p20).")
+# a citation that wraps to the start of the next line
+WRAPPED = ("gives the same number", "(SWP p21). Vallee")
 NPAGES = 6
 PAGE_W, PAGE_H = 432, 648
 
@@ -184,6 +188,17 @@ def page_content(pno: int, kind: str) -> bytes:
         ]
     lines += ["/F1 11 Tf"]
     for line in BODY:
+        y -= 18
+        lines += [f"1 0 0 1 72 {y} Tm", show(line)]
+    y -= 18
+    lines.append(f"1 0 0 1 72 {y} Tm")
+    a, b = CITED
+    if kind == "cid":
+        # one TJ, word gap as a kerning adjustment with no space glyph
+        lines.append(f"[{_hex(a)} -333 {_hex(b)}] TJ")
+    else:
+        lines += [show(a), show(" " + b)]  # two shows on the same line
+    for line in WRAPPED:
         y -= 18
         lines += [f"1 0 0 1 72 {y} Tm", show(line)]
     lines += ["/F1 9 Tf", "1 0 0 1 210 30 Tm", show(str(pno + 1)), "ET"]

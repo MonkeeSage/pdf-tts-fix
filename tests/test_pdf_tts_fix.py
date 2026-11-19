@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 from statistics import median
@@ -135,6 +136,65 @@ def test_cli(book, tmp_path, capsys):
         main([str(book), "-o", str(book), "-f"]) == 2
     )  # never overwrite the input
     assert "page numbers" in capsys.readouterr().out
+
+
+CITATION = r" \([A-Z]{2,}[^)]*\)"
+
+
+def test_remove_regex(book, tmp_path):
+    out = tmp_path / "out.pdf"
+    report = process(book, out, remove=[CITATION])
+    assert [t for _, t in report.removed] == [
+        " (NI p14; FV p20)",
+        " (SWP p21)",  # at the start of a line
+    ] * NPAGES
+    for text in mupdf_text(out):
+        assert "NI" not in text and "FV" not in text and "p14" not in text
+        assert "SWP" not in text and "p21" not in text
+        assert "gives the same number" in text and "Vallee" in text
+        assert re.search(r"and \$12 million for the second\s*\.", text)
+        assert HEADING in text and all(line in text for line in BODY)
+    with pymupdf.open(book) as a, pymupdf.open(out) as b:
+        for pa, pb in zip(a, b):
+            assert (
+                pa.get_pixmap(dpi=100).samples
+                == pb.get_pixmap(dpi=100).samples
+            )
+
+
+@pytest.mark.skipif(
+    not shutil.which("pdftotext"), reason="poppler not installed"
+)
+def test_remove_regex_poppler(book, tmp_path):
+    out = tmp_path / "out.pdf"
+    process(book, out, remove=[CITATION])
+    text = subprocess.run(
+        ["pdftotext", str(out), "-"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    assert "NI p14" not in text and "FV" not in text and "SWP" not in text
+    assert text.count("and $12 million for the second.\n") == NPAGES
+
+
+def test_remove_regex_sequential_and_letter_spaced(book, tmp_path):
+    # the second pattern only matches once the first has removed "BEST "
+    out = tmp_path / "out.pdf"
+    report = process(book, out, remove=["BEST ", "THE THING"])
+    assert len(report.removed) == 2 * NPAGES
+    for text in mupdf_text(out):
+        assert "BEST" not in text and "THE" not in text.split()
+        assert "THING" not in text
+
+
+def test_cli_replace(book, tmp_path, capsys):
+    out = tmp_path / "o.pdf"
+    assert main([str(book), "-o", str(out), "-r", CITATION, "-r", "x^"]) == 0
+    assert f"removed {2 * NPAGES} matches" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        main([str(book), "-o", str(out), "-f", "-r", "("])
+    assert "bad regex" in capsys.readouterr().err
 
 
 @pytest.mark.skipif(

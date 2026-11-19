@@ -167,9 +167,10 @@ def widened_copy(pdf: pikepdf.Pdf, font: Font, k: float) -> pikepdf.Object:
 
 
 def silent_copy(
-    pdf: pikepdf.Pdf, font: Font, codes: set[int]
+    pdf: pikepdf.Pdf, font: Font, codes: set[int], base=None
 ) -> pikepdf.Object:
-    """Copy of `font` whose ToUnicode maps every given code to a space."""
+    """Copy of `font` (or of `base`, a modified copy of it) whose ToUnicode
+    maps every given code to a space."""
     nbytes = max(n for n, _, _ in font.codespace)
     hexw = nbytes * 2
     codes = sorted(codes | set(font.unicode)) or [0]
@@ -191,7 +192,7 @@ def silent_copy(
     cmap.append(
         b"endcmap CMapName currentdict /CMap defineresource pop end end"
     )
-    new = _copy_dict(font.obj)
+    new = _copy_dict(font.obj if base is None else base)
     new.ToUnicode = pdf.make_stream(b"\n".join(cmap))
     return pdf.make_indirect(new)
 
